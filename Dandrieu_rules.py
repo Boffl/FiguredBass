@@ -5,6 +5,27 @@ from music21.figuredBass import examples
 from music21.figuredBass import realizer
 
 
+dandrieu_dictionary = {
+    'major': {
+            1: '', 5: '',  # the naturel (empty string defaults to 3,5)
+            (2, 3): '6,4,3', (2, 1): '6,4,3', (6, 5): '#6,4,3',  # petite sixte
+            3: '6', (6, 7): '6', (7, 6): '6',  # sixte simple / sixte doublee
+            (4, 5): '6,5', # quinte et sixte
+            (7, 1): '5,6,3', # fausse quinte
+            (4, 3): '4,6,2',  # l'accord de tritone
+            (6, 4): '3,6,4', # Terztausch
+            },
+    'minor': {
+            1: '', 5: '#3,5,8',
+            (2, 3): '#6,4,3', (6, 5): '6,4,3', (2, 1): '#6,4,3',
+            3: '6', (6, 7): '6', (7, 6): '6',
+            (4, 5): '6,5',
+            (7, 1): '5,6,3',
+            (4, 3): '#4,2,6',
+            (6, 4): '3,6,4',  # Terztausch
+    }
+}
+
 def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
                          timeSig: m21.meter.TimeSignature) -> m21.figuredBass.realizer.FiguredBassLine:
     """ applies Dandrieus Rules to harmonize a bass line.
@@ -13,34 +34,11 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
     # keySig = m21.key.Key(key, mode)
     fbLine = realizer.FiguredBassLine(keySig, timeSig)  # create a fbLine object
 
-    if keySig.mode == 'major':
-        dandrieu_rules = {
-            1: '', 5: '',  # the naturel (empty string defaults to 3,5)
-            (2, 3): '6,4,3', (2, 1): '6,4,3', (6, 5): '#6,4,3',  # petite sixte
-            3: '6', (6, 7): '6', (7, 6): '6',  # sixte simple / sixte doublee
-            (4, 5): '6,5', # quinte et sixte
-            (7, 1): '5,6,3', # fausse quinte
-            (4, 3): '4,6,2',  # l'accord de tritone
-            (6, 4): '3,6,4', # Terztausch
-            
-              }
+    try:
+        dandrieu_rules = dandrieu_dictionary[keySig.mode]
 
-
-    elif keySig.mode == 'minor':
-        # TODO: implement minor
-        dandrieu_rules = {
-            1: '', 5: '#3,5,8',
-            (2, 3): '#6,4,3', (6, 5): '6,4,3', (2, 1): '#6,4,3',
-            3: '6', (6, 7): '6', (7, 6): '6',
-            (4, 5): '6,5',
-            (7, 1): '5,6,3',
-            (4, 3): '#4,2,6',
-            (6, 4): '3,6,4',  # Terztausch
-        }
-
-    else:
-        # TODO:
-        # raise an error, quit the program
+    except KeyError:
+        # TODO: raise an error, quit the program
         print('only major and minor are supported modes')
 
     # iterating over the bass notes:
