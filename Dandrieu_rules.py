@@ -5,6 +5,15 @@ from music21.figuredBass import examples
 from music21.figuredBass import realizer
 
 
+def pairwise(iterable):
+    '''for pairwise iteration'''
+    it = iter(iterable)
+    a = next(it, None)
+
+    for b in it:
+        yield (a, b)
+        a = b
+
 dandrieu_dictionary = {
     'major': {
             1: '', 5: '',  # the naturel (empty string defaults to 3,5)
@@ -42,25 +51,19 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
         print('only major and minor are supported modes')
 
     # iterating over the bass notes:
-    for i, bass_note in enumerate(notes):
+    for this_note, following_note in pairwise(notes):
         # print(len([x for x in bass.recurse().notes]))
         # solve the try except with a while loop, would be more elegant!!!!
 
-        try:  # since the last note wont have a note at i+1
-            following_note = notes[i + 1]
-            this_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(bass_note.pitch)[0]
-            # have to use the long one, getting also the accidental, because of melodic minor...
-            following_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(following_note.pitch)[0]
+        this_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(this_note.pitch)[0]
+        # have to use the long one, getting also the accidental, because of melodic minor...
+        following_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(following_note.pitch)[0]
 
-            if this_note_degree in dandrieu_rules:
-                fbLine.addElement(bass_note, dandrieu_rules[this_note_degree])
+        if this_note_degree in dandrieu_rules:
+            fbLine.addElement(this_note, dandrieu_rules[this_note_degree])
 
-            elif (this_note_degree, following_note_degree) in dandrieu_rules:
-                fbLine.addElement(bass_note, dandrieu_rules[(this_note_degree, following_note_degree)])
-
-        except IndexError:
-            fbLine.addElement(bass_note)  # no notation added, always end on the naturel
-
+        elif (this_note_degree, following_note_degree) in dandrieu_rules:
+            fbLine.addElement(this_note, dandrieu_rules[(this_note_degree, following_note_degree)])
 
     return fbLine
 
