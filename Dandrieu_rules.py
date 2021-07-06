@@ -16,9 +16,10 @@ def dandrieu_octave_rule(notes, keySig: m21.key.Key,
                           (6, 5): '#6,4,3', (4, 3): '4,6,2', (2, 1): '6,4,3'}
 
     elif keySig.mode == 'minor':
+        # TODO: implement minor
         dandrieu_rules = {1: '', (2, 3): '#6,4,3', 3: '6', (4, 5): '6,5',
-                          5: '', (6, 7): '6', (7, 1): '6', (7, 6): '6',
-                          (6, 5): '6', (4, 3): '4,6', (2, 1): '6'}
+                          5: '#3,5,8', (6, 7): '6', (7, 1): '5,6,3', (7, 6): '6',
+                          (6, 5): '6,4,3', (4, 3): '#4,2,6', (2, 1): '#6,4,3'}
 
     else:
         # TODO:
@@ -32,8 +33,10 @@ def dandrieu_octave_rule(notes, keySig: m21.key.Key,
 
         try:  # since the last note wont have a note at i+1
             following_note = notes[i + 1]
-            this_note_degree = keySig.getScaleDegreeFromPitch(bass_note.pitch)
-            following_note_degree = keySig.getScaleDegreeFromPitch(following_note.pitch)
+            this_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(bass_note.pitch)[0]
+            # have to use the long one, getting also the accidental, because of melodic minor...
+            following_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(following_note.pitch)[0]
+            print(bass_note, this_note_degree)
 
             if this_note_degree in dandrieu_rules:
                 fbLine.addElement(bass_note, dandrieu_rules[this_note_degree])
@@ -52,14 +55,16 @@ if __name__ == '__main__':
     # create example
     c_major = "C1 D E F G A B c c B A G F E D C"
     d_major = "D1 E F# G A B c# d d c# B A G F# E D"
+    d_minor = 'D1 E F G A B c# d d c B- A G F E D'
+    c_minor = 'C1 D E- F G A B c c B- A- G F E- D C'
     #mstr_minor = 'C1 D E- F G A B c c B- A- G F E- D C'
-    bass = m21.converter.parse('tinynotation: 4/4 ' + d_major)
+    bass = m21.converter.parse('tinynotation: 4/4 ' + c_minor)
     # bass = m21.converter.parse('c_major.musicxml')
 
-    # get the notes, for now getting all the notes
+    # get the list of notes
     notes = bass.recurse().notes
     # set parameters manually
-    keySig = m21.key.Key('D', 'major')
+    keySig = m21.key.Key('C', 'minor')
     timeSig = m21.meter.TimeSignature('4/4')
 
     # get the fb_line with the figures
@@ -68,7 +73,7 @@ if __name__ == '__main__':
 
     # realizing the chords from the created figures
     fbRules = rules.Rules()  # in case you want to change the rules?
-    # fbRules.partMovementLimits = [(1, 3), (2, 4), (3, 5)]
+    fbRules.partMovementLimits = [(1, 3), (2, 4), (3, 5)]
     allSols = fbLine.realize(fbRules)  # get all solutions
     print(allSols.getNumSolutions())
     allSols.generateRandomRealization().show()  # generate a solution
