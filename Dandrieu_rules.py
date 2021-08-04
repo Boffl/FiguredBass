@@ -3,6 +3,7 @@ from typing import List
 from music21.figuredBass import rules
 from music21.figuredBass import examples
 from music21.figuredBass import realizer
+from collections import deque
 
 
 def pairwise(iterable):
@@ -14,6 +15,19 @@ def pairwise(iterable):
         yield (a, b)
         a = b
 
+
+def triplewise(iterable):
+    '''for iteration over triplets'''
+    it = iter(iterable)
+    a = next(it, None)
+    b = next(it, None)
+
+    for c in it:
+        yield (a, b, c)
+        a = b
+        b = c
+
+
 dandrieu_dictionary = {
     'major': {
             1: '', 5: '',  # the naturel (empty string defaults to 3,5)
@@ -23,6 +37,8 @@ dandrieu_dictionary = {
             (7, 1): '5,6,3', # fausse quinte
             (4, 3): '4,6,2',  # l'accord de tritone
             (6, 4): '3,6,4', # Terztausch
+            (1, 1, 7): '4,6,2', # initialformel
+
             },
     'minor': {
             1: '', 5: '#3,5,8',
@@ -31,7 +47,10 @@ dandrieu_dictionary = {
             (4, 5): '6,5',
             (7, 1): '5,6,3',
             (4, 3): '#4,2,6',
-            (6, 4): '3,6,4',  # Terztausch
+            # (6, 4): '3,6,4',  # Terztausch, nur bei Dur nötig, wegen der #6
+            (2, 7): '5, #6, 3', # Alternativakkord
+            (2,7,1): '7, 5, 3', # die sieben, falls sie durch den Alternativakkord auf der 2 vorbereitet ist
+            (1, 1, 7): '4,6,2', # initialformel
     }
 }
 
@@ -51,19 +70,55 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
         print('only major and minor are supported modes')
 
     # iterating over the bass notes:
-    for this_note, following_note in pairwise(notes):
+    notes = deque(notes)
+    notes.appendleft(None) # since we use triplets an always wan
+    notes.append(None)
+
+    for previous_note, this_note, following_note in triplewise(notes):
         # print(len([x for x in bass.recurse().notes]))
         # solve the try except with a while loop, would be more elegant!!!!
+        figures = '' # string to add to the fb_line, start with empty string
 
         this_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(this_note.pitch)[0]
         # have to use the long one, getting also the accidental, because of melodic minor...
-        following_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(following_note.pitch)[0]
 
-        if this_note_degree in dandrieu_rules:
-            fbLine.addElement(this_note, dandrieu_rules[this_note_degree])
+        if previous_note:
+            previous_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(previous_note.pitch)[0]
+        else:
+            previous_note_degree = None
+
+        if following_note:
+            following_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(following_note.pitch)[0]
+        else:
+            following_note_degree = None
+
+
+        # Start looking up patterns in the dandrieu rule set
+
+        if (previous_note_degree, this_note_degree, following_note_degree) in dandrieu_rules:
+            figures = dandrieu_rules[(previous_note_degree, this_note_degree, following_note_degree)]
+            # fbLine.addElement(this_note, dandrieu_rules[(previous_note_degree, this_note_degree, following_note_degree)])
 
         elif (this_note_degree, following_note_degree) in dandrieu_rules:
-            fbLine.addElement(this_note, dandrieu_rules[(this_note_degree, following_note_degree)])
+            figures = dandrieu_rules[(this_note_degree, following_note_degree)]
+            # fbLine.addElement(this_note, dandrieu_rules[(this_note_degree, following_note_degree)])
+
+        elif this_note_degree in dandrieu_rules:
+            figures = dandrieu_rules[this_note_degree]
+            # fbLine.addElement(this_note, dandrieu_rules[this_note_degree])
+
+        # quintfall:
+        if previous_note_degree and following_note_degree:  # make sure we do not have none types
+            if previous_note_degree-this_note_degree in (-3,4) and this_note_degree-following_note_degree in (-3, 4):
+                print('quintfall erkannt')
+                figures += ',7'
+                print(figures)
+
+        fbLine.addElement(this_note, figures)
+
+
+
+
 
     return fbLine
 
@@ -79,14 +134,27 @@ if __name__ == '__main__':
     # special movements:
     terztausch = 'A1 F G GG C'  # Dandrieu page 20, example in c major
     terztausch_moll = 'A-1 F GG C'
+
+    # initialformel:
+    initial = "C1 C BB C"
+    initial_moll = "D1 D C# D"
     #mstr_minor = 'C1 D E- F G A B c c B- A- G F E- D C'
-    bass = m21.converter.parse('tinynotation: 4/4 ' + terztausch_moll)
+
+    zwei_7_1 = 'D1 E C# D'
+
+    # quintfälle:
+    d_quintfall1 = "E1 AA D"
+    d_quintfall2 = "D1 G C# D"
+    d_quintfall3 = "F1 BB- E C# D"
+
+    # create a bass, with the example I want to test
+    bass = m21.converter.parse('tinynotation: 4/4 ' + d_quintfall3)
     # bass = m21.converter.parse('c_major.musicxml')
 
     # get the list of notes
     notes = bass.recurse().notes
     # set parameters manually
-    keySig = m21.key.Key('C', 'minor')
+    keySig = m21.key.Key('D', 'Minor')
     timeSig = m21.meter.TimeSignature('4/4')
 
     # get the fb_line with the figures
