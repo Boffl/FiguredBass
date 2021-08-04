@@ -28,31 +28,9 @@ def triplewise(iterable):
         b = c
 
 
-dandrieu_dictionary = {
-    'major': {
-            1: '', 5: '',  # the naturel (empty string defaults to 3,5)
-            (2, 3): '6,4,3', (2, 1): '6,4,3', (6, 5): '#6,4,3',  # petite sixte
-            3: '6', (6, 7): '6', (7, 6): '6',  # sixte simple / sixte doublee
-            (4, 5): '6,5', # quinte et sixte
-            (7, 1): '5,6,3', # fausse quinte
-            (4, 3): '4,6,2',  # l'accord de tritone
-            (6, 4): '3,6,4', # Terztausch
-            (1, 1, 7): '4,6,2', # initialformel
 
-            },
-    'minor': {
-            1: '', 5: '#3,5,8',
-            (2, 3): '#6,4,3', (6, 5): '6,4,3', (2, 1): '#6,4,3',
-            3: '6', (6, 7): '6', (7, 6): '6',
-            (4, 5): '6,5',
-            (7, 1): '5,6,3',
-            (4, 3): '#4,2,6',
-            # (6, 4): '3,6,4',  # Terztausch, nur bei Dur nötig, wegen der #6
-            (2, 7): '5, #6, 3', # Alternativakkord
-            (2,7,1): '7, 5, 3', # die sieben, falls sie durch den Alternativakkord auf der 2 vorbereitet ist
-            (1, 1, 7): '4,6,2', # initialformel
-    }
-}
+
+
 
 def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
                          timeSig: m21.meter.TimeSignature) -> m21.figuredBass.realizer.FiguredBassLine:
@@ -60,6 +38,33 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
     :ivar: a list of bass notes as well as key and time signature
     :return: a ~music21.figuredBass.realizer.FiguredBassLine object"""
     # keySig = m21.key.Key(key, mode)
+
+    dandrieu_dictionary = {
+        'major': {
+            # 1: '', 5: '',  # the naturel (empty string defaults to 3,5), # note I add the empty string anyway
+            (2, 3): '6,4,3', (2, 1): '6,4,3', (6, 5): '#6,4,3',  # petite sixte
+            3: '6', (6, 7): '6', (7, 6): '6',  # sixte simple / sixte doublee
+            (4, 5): '6,5',  # quinte et sixte
+            (7, 1): '5,6,3',  # fausse quinte
+            (4, 3): '4,6,2',  # l'accord de tritone
+            (6, 4): '3,6,4',  # Terztausch
+            (1, 1, 7): '4,6,2',  # initialformel
+
+        },
+        'minor': {
+            1: '', 5: '#3,5,8',
+            (2, 3): '#6,4,3', (6, 5): '6,4,3', (2, 1): '#6,4,3',
+            3: '6', (6, 7): '6', (7, 6): '6',
+            (4, 5): '6,5',
+            (7, 1): '5,6,3',
+            (4, 3): '#4,2,6',
+            (6, 4): '3,6,4',  # Terztausch
+            (2, 7): '5, #6, 3',  # Alternativakkord
+            (2, 7, 1): '7, 5, 3',  # die sieben, falls sie durch den Alternativakkord auf der 2 vorbereitet ist
+            (1, 1, 7): '4,6,2',  # initialformel
+        }
+    }
+
     fbLine = realizer.FiguredBassLine(keySig, timeSig)  # create a fbLine object
 
     try:
@@ -110,20 +115,15 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
         # quintfall:
         if previous_note_degree and following_note_degree:  # make sure we do not have none types
             if previous_note_degree-this_note_degree in (-3,4) and this_note_degree-following_note_degree in (-3, 4):
-                print('quintfall erkannt')
                 figures += ',7'
-                print(figures)
 
+        # add the note and the figures to the fbline object
         fbLine.addElement(this_note, figures)
-
-
-
-
 
     return fbLine
 
 
-if __name__ == '__main__':
+def test_dandrieu_rules():
     # create examples:
     # scales
     c_major = "C1 D E F G A B c c B A G F E D C"
@@ -145,7 +145,7 @@ if __name__ == '__main__':
     # quintfälle:
     d_quintfall1 = "E1 AA D"
     d_quintfall2 = "D1 G C# D"
-    d_quintfall3 = "F1 BB- E C# D"
+    d_quintfall3 = "F1 BB- E2 C# D1"
 
     # create a bass, with the example I want to test
     bass = m21.converter.parse('tinynotation: 4/4 ' + d_quintfall3)
@@ -169,3 +169,41 @@ if __name__ == '__main__':
     # allSols.generateAllRealizations().show()
     allSols.generateRandomRealization().show()  # generate a solution
 
+def parse_bass(inbass: m21.stream.Score):
+    '''
+    for now it just takes the time signature from the beginning, and finds the key by looking at the last note
+    and the key signature. If the key signature and the last note do not match up it prints out an error
+    :param inbass:
+    :return:
+    '''
+
+    bass_line = inbass.parts[0] # take first part of the score, it should be a single line
+    timeSig = bass_line.getTimeSignatures()[0] # for now it does not work with changing timeSigs in the piece
+
+    Key_signature = bass_line.recurse().getElementsByClass(m21.key.KeySignature)[0]
+    Key = Key_signature.asKey()
+    
+    if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
+        Key = Key.relative
+
+        if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
+            # Todo: raise an Error
+            print("Can not figure out over all key")
+
+    return bass_line.recurse().notes, Key, timeSig
+
+
+if __name__ == '__main__':
+    inbass = m21.converter.parse('d_minor.musicxml')
+    notes, keySig, timeSig = parse_bass(inbass)
+    # get the fb_line with the figures
+    fbLine = dandrieu_octave_rule(notes, keySig, timeSig)
+    fbLine.realize()
+
+    # realizing the chords from the created figures
+    fbRules = rules.Rules()  # in case you want to change the rules?
+    fbRules.partMovementLimits = [(1, 5), (2, 5), (3, 5)]
+    allSols = fbLine.realize(fbRules)  # get all solutions
+    print(allSols.getNumSolutions())
+    # allSols.generateAllRealizations().show()
+    allSols.generateRandomRealization().show()  # generate a solution
