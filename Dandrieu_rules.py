@@ -28,10 +28,6 @@ def triplewise(iterable):
         b = c
 
 
-
-
-
-
 def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
                          timeSig: m21.meter.TimeSignature) -> m21.figuredBass.realizer.FiguredBassLine:
     """ applies Dandrieus Rules to harmonize a bass line.
@@ -134,9 +130,11 @@ def parse_bass(inbass: m21.stream.Score):
     bass_line = inbass.parts[0]  # take first part of the score, it should be a single line
     timeSig = bass_line.getTimeSignatures()[0]  # for now it does not work with changing timeSigs in the piece
 
+    # It also does not yet work with changing key signatures, as well as modulations without changing keys
     Key_signature = bass_line.recurse().getElementsByClass(m21.key.KeySignature)[0]
     Key = Key_signature.asKey()
 
+    # also it can't figure out the key if the last note does not match with the key signature
     if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
         Key = Key.relative
 
