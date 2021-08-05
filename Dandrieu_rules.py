@@ -76,13 +76,13 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
 
     # iterating over the bass notes:
     notes = deque(notes)
-    notes.appendleft(None) # since we use triplets an always wan
+    notes.appendleft(None) # since we use triplets
     notes.append(None)
 
     for previous_note, this_note, following_note in triplewise(notes):
         # print(len([x for x in bass.recurse().notes]))
         # solve the try except with a while loop, would be more elegant!!!!
-        figures = '' # string to add to the fb_line, start with empty string
+        figures = ''  # string to add to the fb_line, start with empty string
 
         this_note_degree = keySig.getScaleDegreeAndAccidentalFromPitch(this_note.pitch)[0]
         # have to use the long one, getting also the accidental, because of melodic minor...
@@ -121,6 +121,30 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
         fbLine.addElement(this_note, figures)
 
     return fbLine
+
+
+def parse_bass(inbass: m21.stream.Score):
+    '''
+    for now it just takes the time signature from the beginning, and finds the key by looking at the last note
+    and the key signature. If the key signature and the last note do not match up it prints out an error
+    :param inbass:
+    :return:
+    '''
+
+    bass_line = inbass.parts[0]  # take first part of the score, it should be a single line
+    timeSig = bass_line.getTimeSignatures()[0]  # for now it does not work with changing timeSigs in the piece
+
+    Key_signature = bass_line.recurse().getElementsByClass(m21.key.KeySignature)[0]
+    Key = Key_signature.asKey()
+
+    if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
+        Key = Key.relative
+
+        if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
+            # Todo: raise an Error
+            print("Can not figure out over all key")
+
+    return bass_line.recurse().notes, Key, timeSig
 
 
 def test_dandrieu_rules():
@@ -169,28 +193,7 @@ def test_dandrieu_rules():
     # allSols.generateAllRealizations().show()
     allSols.generateRandomRealization().show()  # generate a solution
 
-def parse_bass(inbass: m21.stream.Score):
-    '''
-    for now it just takes the time signature from the beginning, and finds the key by looking at the last note
-    and the key signature. If the key signature and the last note do not match up it prints out an error
-    :param inbass:
-    :return:
-    '''
 
-    bass_line = inbass.parts[0] # take first part of the score, it should be a single line
-    timeSig = bass_line.getTimeSignatures()[0] # for now it does not work with changing timeSigs in the piece
-
-    Key_signature = bass_line.recurse().getElementsByClass(m21.key.KeySignature)[0]
-    Key = Key_signature.asKey()
-    
-    if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
-        Key = Key.relative
-
-        if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
-            # Todo: raise an Error
-            print("Can not figure out over all key")
-
-    return bass_line.recurse().notes, Key, timeSig
 
 
 if __name__ == '__main__':
