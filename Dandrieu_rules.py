@@ -29,7 +29,8 @@ def triplewise(iterable):
 
 
 def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
-                         timeSig: m21.meter.TimeSignature) -> m21.figuredBass.realizer.FiguredBassLine:
+                         timeSig: m21.meter.TimeSignature,
+                         seventh = False) -> m21.figuredBass.realizer.FiguredBassLine:
     """ applies Dandrieus Rules to harmonize a bass line.
     :ivar: a list of bass notes as well as key and time signature
     :return: a ~music21.figuredBass.realizer.FiguredBassLine object"""
@@ -109,9 +110,10 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
             # fbLine.addElement(this_note, dandrieu_rules[this_note_degree])
 
         # quintfall:
-        if previous_note_degree and following_note_degree:  # make sure we do not have none types
-            if previous_note_degree-this_note_degree in (-3,4) and this_note_degree-following_note_degree in (-3, 4):
-                figures += ',7'
+        if seventh:
+            if previous_note_degree and following_note_degree:  # make sure we do not have none types
+                if previous_note_degree-this_note_degree in (-3,4) and this_note_degree-following_note_degree in (-3, 4):
+                    figures += ',7'
 
         # add the note and the figures to the fbline object
         fbLine.addElement(this_note, figures)
@@ -121,6 +123,7 @@ def dandrieu_octave_rule(notes: List[m21.note.Note], keySig: m21.key.Key,
 
 def parse_bass(inbass: m21.stream.Score):
     '''
+    this is in case a file is provided from which the bass is to be read.
     for now it just takes the time signature from the beginning, and finds the key by looking at the last note
     and the key signature. If the key signature and the last note do not match up it prints out an error
     :param inbass:
@@ -140,7 +143,7 @@ def parse_bass(inbass: m21.stream.Score):
 
         if bass_line.recurse().notes[-1].name != m21.note.Note(Key.tonic).name:
             # Todo: raise an Error
-            print("Can not figure out over all key")
+            print(f"Can not figure out over all key, defaulting to {Key}")
 
     return bass_line.recurse().notes, Key, timeSig
 
@@ -191,11 +194,28 @@ def test_dandrieu_rules():
     # allSols.generateAllRealizations().show()
     allSols.generateRandomRealization().show()  # generate a solution
 
-
+def get_user_input():
+    keySig = input("Input keysignature (for example 'D Minor'): ").split(' ')
+    try: 
+        keySig = m21.key.Key(keySig[0], keySig[1])
+    except:
+        print("Error: invalid time signature\n")
+    
+    timeSig_str = input("Input timesignature (for example '3/4'): ")
+    try:
+        timeSig = m21.meter.TimeSignature(timeSig_str)
+    except:
+        print("Error: invalid time signature\n")
+        
+    notes_str = input("Enter the bass notes: \n")
+    notes_list = m21.converter.parse(f'tinynotation: {timeSig_str} {notes_str}').recurse().notes
+    
+    return notes_list, keySig, timeSig
 
 
 if __name__ == '__main__':
-    inbass = m21.converter.parse('d_minor.musicxml')
+    inbass = m21.converter.parse('data/d_minor.musicxml')
+    # notes, keySig, timeSig = get_user_input()
     notes, keySig, timeSig = parse_bass(inbass)
     # get the fb_line with the figures
     fbLine = dandrieu_octave_rule(notes, keySig, timeSig)
@@ -205,6 +225,13 @@ if __name__ == '__main__':
     fbRules = rules.Rules()  # in case you want to change the rules?
     fbRules.partMovementLimits = [(1, 5), (2, 5), (3, 5)]
     allSols = fbLine.realize(fbRules)  # get all solutions
+
     print(allSols.getNumSolutions())
     # allSols.generateAllRealizations().show()
-    allSols.generateRandomRealization().show()  # generate a solution
+    realization = allSols.generateRandomRealization()
+    realization.write('musicxml', 'junk.musicxml')  # generate a solution
+    # In case I need to return just a plain string of xml:
+    GEX = m21.musicxml.m21ToXml.GeneralObjectExporter(realization)
+    out = GEX.parse()  # out is bytes
+    outStr = out.decode('utf-8')  # now is string
+    print(outStr.strip())
